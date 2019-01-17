@@ -20,20 +20,30 @@ dn/dt = 0.032*(mV**-1)*(15.*mV-v+VT)/
 dh/dt = 0.128*exp((17.*mV-v+VT)/(18.*mV))/ms*(1.-h)-4./(1+exp((40.*mV-v+VT)/(5.*mV)))/ms*h : 1
 I : amp
 '''
-group = NeuronGroup(1, eqs_HH,
+group = NeuronGroup(2, eqs_HH,
                     threshold='v > -40*mV',
                     refractory='v > -40*mV',
                     method='exponential_euler')
 group.v = El
+
+S = Synapses(group, group, 'w : 1', on_pre='v_post += -v_pre * w')
+S.connect(i=0, j=1)
+S.w = '.1'
+S.delay = '4*ms'
+
 statemon = StateMonitor(group, 'v', record=True)
 spikemon = SpikeMonitor(group, variables='v')
+# we replace the loop with a network_operation
+@network_operation(dt=5*ms)
+def change_I():
+    group.I[0] = .1*nA
+run(200*ms)
 figure(figsize=(9, 4))
-for l in range(10):
-    group.I = .1*nA # rand()*50*nA
-    run(10*ms)
-    axvline(l*10, ls='--', c='k')
+for l in range(6):
+    axvline(l*20, ls='--', c='k')
 axhline(El/mV, ls='-', c='lightgray', lw=3)
 plot(statemon.t/ms, statemon.v[0]/mV, '-b')
+plot(statemon.t/ms, statemon.v[1]/mV, '-g')
 plot(spikemon.t/ms, spikemon.v/mV, 'ob')
 xlabel('Time (ms)')
-ylabel('v (mV)')
+ylabel('v (mV)');
